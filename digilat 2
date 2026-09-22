@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Layanan Digital Puskesmas Kebandaran</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Modal Password Admin -->
+    <div id="admin-auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 transform transition-all">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="font-bold text-gray-800 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-emerald-600"></i>
+                    <span>Autentikasi Akses Admin</span>
+                </h3>
+                <button onclick="closeAdminAuthModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 mb-4 leading-relaxed">
+                Halaman Pengaturan bersifat terbatas. Masukkan password admin untuk melanjutkan. (Default: <b>admin123</b>)
+            </p>
+            <form onsubmit="handleVerifyAdminAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Password Admin</label>
+                    <div class="relative">
+                        <input type="password" id="auth-password-input" placeholder="Masukkan password admin" required class="w-full border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                        <i class="fa-solid fa-key absolute left-3.5 top-3 text-gray-400 text-xs"></i>
+                    </div>
+                </div>
+                <div class="flex space-x-2 justify-end pt-2">
+                    <button type="button" onclick="closeAdminAuthModal()" class="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm active:scale-95">
+                        Buka Pengaturan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center space-x-3 cursor-pointer group" onclick="switchTab('home')">
+                <div class="w-10 h-10 rounded-full bg-white text-emerald-700 flex items-center justify-center font-bold text-xl shadow group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-hospital-user"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight">Puskesmas Kebandaran</h1>
+                    <p class="text-xs text-emerald-100 hidden sm:block">Layanan Kesehatan Digital & Konseling Virtual</p>
+                </div>
+            </div>
+
+            <!-- Desktop Menu -->
+            <nav class="hidden md:flex space-x-1 text-sm font-medium">
+                <button id="nav-item-home" onclick="switchTab('home')" class="nav-btn px-3 py-2 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2 bg-emerald-800" data-tab="home">
+                    <i class="fa-solid fa-house"></i><span>Beranda</span>
+                </button>
+                <button id="nav-item-chat" onclick="switchTab('chat')" class="nav-btn px-3 py-2 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2" data-tab="chat">
+                    <i class="fa-solid fa-comments"></i><span>Konseling</span>
+                </button>
+                <button id="nav-item-kesehatan" onclick="switchTab('kesehatan')" class="nav-btn px-3 py-2 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2" data-tab="kesehatan">
+                    <i class="fa-solid fa-heart-pulse"></i><span>Kalkulator Kesehatan</span>
+                </button>
+                <button id="nav-item-settings" onclick="requestAdminTabAccess()" class="nav-btn px-3 py-2 rounded-lg hover:bg-emerald-600 transition flex items-center space-x-2" data-tab="settings">
+                    <i class="fa-solid fa-gear"></i><span>Pengaturan</span>
+                </button>
+            </nav>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button id="mobile-menu-btn" onclick="toggleMobileMenu()" class="md:hidden text-white p-2 rounded-lg hover:bg-emerald-600 focus:outline-none">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Navigation Drawer -->
+        <div id="mobile-menu" class="hidden md:hidden bg-emerald-800 px-4 pt-2 pb-4 space-y-1 text-sm border-t border-emerald-600">
+            <button id="mobile-nav-item-home" onclick="switchTab('home')" class="w-full text-left px-3 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-3 text-white">
+                <i class="fa-solid fa-house w-5"></i><span>Beranda</span>
+            </button>
+            <button id="mobile-nav-item-chat" onclick="switchTab('chat')" class="w-full text-left px-3 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-3 text-white">
+                <i class="fa-solid fa-comments w-5"></i><span>Konseling</span>
+            </button>
+            <button id="mobile-nav-item-kesehatan" onclick="switchTab('kesehatan')" class="w-full text-left px-3 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-3 text-white">
+                <i class="fa-solid fa-heart-pulse w-5"></i><span>Kalkulator Kesehatan</span>
+            </button>
+            <button id="mobile-nav-item-settings" onclick="requestAdminTabAccess()" class="w-full text-left px-3 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-3 text-white">
+                <i class="fa-solid fa-gear w-5"></i><span>Pengaturan Admin</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- TAB: HOME -->
+        <section id="tab-home" class="tab-content space-y-6">
+            <!-- Hero Section -->
+            <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 rounded-2xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="inline-block bg-emerald-500/30 text-emerald-100 text-xs px-3 py-1 rounded-full font-semibold mb-3 border border-emerald-400/30">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> Layanan Resmi Digital
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold mb-3 leading-tight">Selamat Datang di Layanan Digital Puskesmas Kebandaran</h2>
+                    <p class="text-emerald-100 text-sm sm:text-base max-w-2xl mb-8 leading-relaxed">
+                        Aplikasi pelayanan mandiri untuk konsultasi awal bersama Asisten Arum serta kalkulator kesehatan keluarga & gizi anak.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="switchTab('chat')" class="bg-white text-emerald-800 font-semibold px-5 py-3 rounded-xl shadow-lg hover:bg-emerald-50 transition transform active:scale-95 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-comments text-emerald-600 text-base"></i>
+                            <span>Konseling Bersama Arum</span>
+                        </button>
+                    </div>
+                </div>
+                <i class="fa-solid fa-hospital text-white/10 text-9xl absolute -right-6 -bottom-6 pointer-events-none"></i>
+            </div>
+
+            <!-- Grid Card Fitur Utama -->
+            <div id="home-feature-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 hover:border-emerald-200 transition cursor-pointer group" onclick="switchTab('chat')">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-emerald-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-user-nurse"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg mb-1 group-hover:text-emerald-700 transition">Konseling Asisten Arum</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">Konsultasikan keluhan Anda secara mandiri untuk analisis awal, pertolongan pertama, dan rekomendasi faskes.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md border border-gray-100 hover:border-blue-200 transition cursor-pointer group" onclick="switchTab('kesehatan')">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg mb-1 group-hover:text-blue-700 transition">Kalkulator Medis & Gizi</h3>
+                    <p class="text-gray-600 text-sm leading-relaxed">Pemeriksaan Tekanan Darah, HPL, Gizi Anak (0-5 Tahun), & IMT Dewasa.</p>
+                </div>
+            </div>
+
+            <!-- Informasi Operasional Puskesmas -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 text-lg">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 text-sm">Jadwal Rawat Jalan</h4>
+                        <p id="display-jadwal-rawat-jalan" class="text-xs text-gray-500 mt-1 whitespace-pre-line">Senin - Kamis: 07:30 - 14:00 WIB<br>Jumat - Sabtu: 07:30 - 11:30 WIB</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 text-lg">
+                        <i class="fa-solid fa-truck-medical"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 text-sm">Jadwal UGD & Rawat Inap</h4>
+                        <p id="display-jadwal-rawat-inap" class="text-xs text-gray-500 mt-1 whitespace-pre-line">24 Jam Setiap Hari (Termasuk Hari Libur / Tanggal Merah)</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 text-lg">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 text-sm">Panggilan Darurat & UGD</h4>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Telepon UGD: <a id="link-ugd-phone" href="tel:081234567890" class="font-semibold text-red-600 hover:underline ugd-phone-display">0812-3456-7890</a><br>
+                            WhatsApp CS: <a id="link-cs-wa" href="https://wa.me/6281234567890" target="_blank" class="font-semibold text-emerald-600 hover:underline">+<span class="cs-phone-display">6281234567890</span></a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: KONSELING (BOT ARUM) -->
+        <section id="tab-chat" class="tab-content hidden max-w-4xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden flex flex-col h-[78vh]">
+                <!-- Chat Header -->
+                <div class="bg-emerald-700 text-white px-6 py-4 flex justify-between items-center border-b border-emerald-800 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full bg-emerald-600 border-2 border-emerald-300 flex items-center justify-center text-lg font-bold">
+                                <i class="fa-solid fa-user-nurse"></i>
+                            </div>
+                            <span class="w-3 h-3 bg-green-400 border-2 border-emerald-700 rounded-full absolute bottom-0 right-0"></span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm sm:text-base leading-snug">Arum - Konseling Puskesmas Kebandaran</h3>
+                            <p class="text-xs text-emerald-200">Asisten Medis Virtual 24/7</p>
+                        </div>
+                    </div>
+                    <button onclick="clearChat()" class="text-emerald-100 hover:text-white text-xs bg-emerald-800 hover:bg-emerald-900 px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span class="hidden sm:inline">Reset Konseling</span>
+                    </button>
+                </div>
+
+                <!-- Chat Log -->
+                <div id="chat-messages" class="flex-grow p-4 sm:p-6 overflow-y-auto space-y-4 bg-slate-50/70"></div>
+
+                <!-- Quick Queries Container -->
+                <div class="px-4 py-2 bg-slate-100/80 border-t border-gray-200 flex flex-wrap gap-1.5 text-xs">
+                    <span class="text-gray-500 self-center font-medium mr-1 text-[11px]">Pintasan Keluhan:</span>
+                    <button onclick="sendQuickQuery('Demam')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🌡️ Demam</button>
+                    <button onclick="sendQuickQuery('Batuk Pilek')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🤧 Batuk & Flu</button>
+                    <button onclick="sendQuickQuery('Sakit Kepala')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🤕 Sakit Kepala</button>
+                    <button onclick="sendQuickQuery('Sakit Perut / Maag')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🤢 Sakit Perut</button>
+                    <button onclick="sendQuickQuery('Diare')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🚻 Diare</button>
+                    <button onclick="sendQuickQuery('Hipertensi / Tensi Tinggi')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">❤️ Tensi Tinggi</button>
+                    <button onclick="sendQuickQuery('Gatal Alergi')" class="bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full transition shadow-xs">🧴 Gatal Alergi</button>
+                </div>
+
+                <!-- Chat Input Form -->
+                <form onsubmit="handleChatSubmit(event)" class="p-3 bg-white border-t border-gray-200 flex space-x-2">
+                    <input type="text" id="chat-input" placeholder="Tuliskan sapaan atau keluhan penyakit Anda..." required class="flex-grow border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl transition text-sm font-semibold flex items-center space-x-2 shadow-md active:scale-95">
+                        <span class="hidden sm:inline">Kirim</span>
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB: KALKULATOR KESEHATAN -->
+        <section id="tab-kesehatan" class="tab-content hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold text-gray-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-calculator text-emerald-600"></i>
+                    <span>Kalkulator Medis & Pemeriksaan Gizi Keluarga</span>
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 1. Cek Gizi Anak (0 - 5 Tahun) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-emerald-800 mb-1 flex items-center space-x-2">
+                            <i class="fa-solid fa-child text-emerald-600"></i>
+                            <span>Pengecekan Gizi Anak (Usia 0 - 5 Tahun)</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Evaluasi status gizi balita berdasarkan berat dan tinggi badan.</p>
+                        <form onsubmit="handleCekGiziAnak(event)" class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Usia (Bulan: 0 - 60)</label>
+                                    <input type="number" id="anak-usia" placeholder="cth: 24" min="0" max="60" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jenis Kelamin</label>
+                                    <select id="anak-gender" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 bg-white">
+                                        <option value="l">Laki-laki</option>
+                                        <option value="p">Perempuan</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Berat Badan (Kg)</label>
+                                    <input type="number" step="0.1" id="anak-bb" placeholder="cth: 12.5" min="1" max="50" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tinggi Badan (Cm)</label>
+                                    <input type="number" step="0.1" id="anak-tb" placeholder="cth: 85" min="30" max="130" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-sm active:scale-95">Periksa Gizi Anak</button>
+                        </form>
+                    </div>
+                    <div id="gizi-anak-result" class="mt-4 hidden"></div>
+                </div>
+
+                <!-- 2. Cek IMT Dewasa -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-teal-800 mb-1 flex items-center space-x-2">
+                            <i class="fa-solid fa-user text-teal-600"></i>
+                            <span>Indeks Massa Tubuh (IMT) Dewasa</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Evaluasi status berat badan ideal untuk usia dewasa (> 18 tahun).</p>
+                        <form onsubmit="handleCekIMTDewasa(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Berat Badan (Kg)</label>
+                                    <input type="number" step="0.1" id="dewasa-bb" placeholder="cth: 65" min="20" max="300" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tinggi Badan (Cm)</label>
+                                    <input type="number" step="0.1" id="dewasa-tb" placeholder="cth: 170" min="100" max="250" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-teal-500">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-sm active:scale-95">Hitung IMT Dewasa</button>
+                        </form>
+                    </div>
+                    <div id="imt-dewasa-result" class="mt-4 hidden"></div>
+                </div>
+
+                <!-- 3. Cek Tensi -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-red-700 mb-1 flex items-center space-x-2">
+                            <i class="fa-solid fa-heart-pulse text-red-500"></i>
+                            <span>Pemeriksaan Tekanan Darah (Tensi)</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Evaluasi kategori tekanan darah berdasarkan standar medis.</p>
+                        <form onsubmit="handleCekTensi(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Sistolik (mmHg)</label>
+                                    <input type="number" id="tensi-sistolik" placeholder="contoh: 120" min="50" max="300" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Diastolik (mmHg)</label>
+                                    <input type="number" id="tensi-diastolik" placeholder="contoh: 80" min="30" max="200" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-sm active:scale-95">Analisis Tensi</button>
+                        </form>
+                    </div>
+                    <div id="tensi-result" class="mt-4 hidden"></div>
+                </div>
+
+                <!-- 4. Cek HPL -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-pink-700 mb-1 flex items-center space-x-2">
+                            <i class="fa-solid fa-baby text-pink-500"></i>
+                            <span>Kalkulator Hari Perkiraan Lahir (HPL)</span>
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Perhitungkan usia kehamilan dan estimasi tanggal persalinan.</p>
+                        <form onsubmit="handleCekHPL(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Hari Pertama Haid Terakhir (HPHT)</label>
+                                <input type="date" id="hpl-hpht" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-pink-500">
+                            </div>
+                            <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-sm active:scale-95">Hitung HPL & Usia Kehamilan</button>
+                        </form>
+                    </div>
+                    <div id="hpl-result" class="mt-4 hidden"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: PENGATURAN ADMIN -->
+        <section id="tab-settings" class="tab-content hidden max-w-3xl mx-auto space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between pb-4 border-b">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-gear text-emerald-600"></i>
+                        <span>Pengaturan Sistem Puskesmas</span>
+                    </h2>
+                    <button onclick="switchTab('home')" class="text-xs text-gray-500 hover:text-gray-700">Kembali ke Beranda</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Sesuaikan jam buka rawat jalan dan nomor kontak darurat puskesmas.</p>
+                
+                <div class="mt-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Jam Buka Rawat Jalan (Teks Tampil di Beranda)</label>
+                        <textarea id="setting-jadwal-input" rows="3" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">Senin - Kamis: 07:30 - 14:00 WIB
+Jumat - Sabtu: 07:30 - 11:30 WIB</textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor Telepon UGD / Darurat</label>
+                            <input type="text" id="setting-ugd-input" value="0812-3456-7890" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nomor WhatsApp CS (Format: 628xxx)</label>
+                            <input type="text" id="setting-cs-input" value="6281234567890" class="w-full border rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+                    <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow transition">Simpan Pengaturan</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-emerald-900 text-emerald-100 py-6 text-center text-xs mt-auto">
+        <p>&copy; 2026 Puskesmas Kebandaran Kabupaten Pemalang. Seluruh Hak Cipta Dilindungi.</p>
+    </footer>
+
+    <!-- JavaScript Aplikasi -->
+    <script>
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-800');
+                if(btn.dataset.tab === tabId) btn.classList.add('bg-emerald-800');
+            });
+
+            const mobileMenu = document.getElementById('mobile-menu');
+            if(mobileMenu) mobileMenu.classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if(menu) menu.classList.toggle('hidden');
+        }
+
+        // Admin Auth Flow
+        function requestAdminTabAccess() {
+            document.getElementById('admin-auth-modal').classList.remove('hidden');
+            document.getElementById('auth-password-input').value = '';
+            document.getElementById('auth-password-input').focus();
+        }
+
+        function closeAdminAuthModal() {
+            document.getElementById('admin-auth-modal').classList.add('hidden');
+        }
+
+        function handleVerifyAdminAuth(e) {
+            e.preventDefault();
+            const pass = document.getElementById('auth-password-input').value;
+            if (pass === 'admin123') {
+                closeAdminAuthModal();
+                switchTab('settings');
+                showToast('Autentikasi berhasil, masuk ke panel pengaturan.', 'success');
+            } else {
+                showToast('Password admin salah! (Gunakan: admin123)', 'error');
+            }
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-800 text-white' : 'bg-red-600 text-white';
+            toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 transition-all transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Chatbot Arum Logic
+        let chatLogs = [];
+        let dynamicCSPhone = "6281234567890";
+
+        function initChat() {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
+            chatLogs = [
+                { sender: 'bot', text: 'Halo! Saya Arum, Asisten Medis Virtual Puskesmas Kebandaran. Silakan ketik sapaan atau keluhan penyakit Anda untuk mendapatkan saran pertolongan pertama dan tindakan sederhana.' }
+            ];
+            renderChat();
+        }
+
+        function renderChat() {
+            const container = document.getElementById('chat-messages');
+            if(!container) return;
+            container.innerHTML = chatLogs.map(log => {
+                if(log.sender === 'bot') {
+                    return `<div class="flex items-start space-x-2.5">
+                        <div class="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-user-nurse"></i></div>
+                        <div class="bg-white border border-gray-200 rounded-2xl rounded-tl-none p-3.5 max-w-[85%] text-xs text-gray-700 leading-relaxed shadow-xs space-y-1.5">${log.text}</div>
+                    </div>`;
+                } else {
+                    return `<div class="flex items-start justify-end space-x-2.5">
+                        <div class="bg-emerald-700 text-white rounded-2xl rounded-tr-none p-3.5 max-w-[85%] text-xs leading-relaxed shadow-xs">${log.text}</div>
+                        <div class="w-8 h-8 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs flex-shrink-0"><i class="fa-solid fa-user"></i></div>
+                    </div>`;
+                }
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+            chatLogs.push({ sender: 'user', text });
+            input.value = '';
+            renderChat();
+            setTimeout(() => generateBotResponse(text), 600);
+        }
+
+        function sendQuickQuery(text) {
+            switchTab('chat');
+            chatLogs.push({ sender: 'user', text });
+            renderChat();
+            setTimeout(() => generateBotResponse(text), 600);
+        }
+
+        function clearChat() {
+            initChat();
+            showToast('Percakapan konseling telah direset.', 'success');
+        }
+
+        function generateBotResponse(query) {
+            const q = query.toLowerCase().trim();
+            let reply = "";
+            let waLink = `https://wa.me/${dynamicCSPhone}`;
+
+            // Deteksi sapaan (pagi, siang, sore, malam, assalamualaikum, dll)
+            if(q === 'pagi' || q === 'siang' || q === 'sore' || q === 'malam' || 
+               q.includes('selamat pagi') || q.includes('selamat siang') || q.includes('selamat sore') || q.includes('selamat malam')) {
+                let waktuUcapan = "pagi";
+                if(q.includes('siang')) waktuUcapan = "siang";
+                else if(q.includes('sore')) waktuUcapan = "sore";
+                else if(q.includes('malam')) waktuUcapan = "malam";
+                else if(q === 'siang') waktuUcapan = "siang";
+                else if(q === 'sore') waktuUcapan = "sore";
+                else if(q === 'malam') waktuUcapan = "malam";
+
+                reply = `Selamat ${waktuUcapan}! Senang bisa menyambut Anda di Layanan Konseling Puskesmas Kebandaran. Ada keluhan kesehatan atau informasi layanan yang bisa Arum bantu hari ini?`;
+            } 
+            else if(q.includes('assalam') || q.includes('assalamu')) {
+                reply = `Wa'alaikumussalam wr. wb. Selamat datang di Layanan Konseling Puskesmas Kebandaran. Ada keluhan kesehatan yang ingin dikonsultasikan hari ini?`;
+            }
+            // Keluhan Penyakit: Demam
+            else if(q.includes('demam') || q.includes('panas')) {
+                reply = `<b>Analisis Awal (Demam):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Perbanyak minum air putih, istirahat total, dan kompres hangat di dahi atau lipatan ketiak.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Konsumsi obat penurun panas seperti Parasetamol sesuai dosis kemasan.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika demam berlanjut lebih dari 3 hari, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Batuk & Flu
+            else if(q.includes('batuk') || q.includes('flu') || q.includes('pilek')) {
+                reply = `<b>Analisis Awal (Batuk & Pilek):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Perbanyak istirahat, minum air hangat, hindari makanan berminyak atau es.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Konsumsi air hangat dicampur jeruk nipis dan madu atau obat batuk/flu bebas yang sesuai.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika sesak napas atau batuk tak kunjung sembuh, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Sakit Kepala
+            else if(q.includes('pusing') || q.includes('kepala') || q.includes('migrain')) {
+                reply = `<b>Analisis Awal (Sakit Kepala / Pusing):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Istirahat di ruangan yang tenang, sejuk, dan minim cahaya. Hindari layar gadget.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Minum air putih yang cukup dan kompres dingin di bagian kepala yang sakit.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika nyeri kepala sangat hebat atau disertai muntah, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Maag / Sakit Perut
+            else if(q.includes('perut') || q.includes('maag') || q.includes('lambung') || q.includes('mual')) {
+                reply = `<b>Analisis Awal (Sakit Perut / Maag):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Kompres hangat pada area perut dan atur posisi tubuh yang nyaman.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Makan dalam porsi kecil tapi sering, hindari makanan pedas, asam, dan kopi.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika nyeri perut tidak tertahankan, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Diare
+            else if(q.includes('diare') || q.includes('mencret')) {
+                reply = `<b>Analisis Awal (Diare):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Segera minum cairan rehidrasi oral (Oralit) dan air putih untuk mencegah dehidrasi.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Konsumsi makanan lunak seperti bubur, sup hangat, atau pisang.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika diare terjadi lebih dari 5 kali sehari atau lemas, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Hipertensi
+            else if(q.includes('tensi') || q.includes('hipertensi') || q.includes('darah tinggi')) {
+                reply = `<b>Analisis Awal (Tekanan Darah Tinggi):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Duduk tenang di tempat yang nyaman dan kendurkan pakaian yang ketat.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Hindari makanan asin/berminyak, perbanyak istirahat, dan minum air putih.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Untuk pemeriksaan tensi rutin, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Keluhan Penyakit: Alergi Gatal
+            else if(q.includes('gatal') || q.includes('alergi') || q.includes('kulit')) {
+                reply = `<b>Analisis Awal (Gatal & Alergi):</b><br>` +
+                        `• <b>Pertolongan Pertama:</b> Hindari menggaruk area yang gatal untuk mencegah luka dan infeksi sekunder.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Kompres dingin pada area gatal atau gunakan losion calamine.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Jika ruam menyebar luas, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa oleh dokter.</div>`;
+            } 
+            // Fallback untuk keluhan umum lainnya
+            else {
+                reply = `Mohon maaf, saya belum dapat memberikan diagnosis mendetail untuk keluhan tersebut secara spesifik.<br><br>` +
+                        `• <b>Saran Pertolongan Pertama:</b> Catat gejala yang dialami, istirahat yang cukup, dan hindari aktivitas berat.<br>` +
+                        `• <b>Tindakan Sederhana:</b> Konsumsi air putih secukupnya dan amati perkembangan kondisi Anda.<br>` +
+                        `<div class="mt-2 pt-2 border-t border-gray-100 font-semibold text-emerald-800">` +
+                        `Agar mendapatkan penanganan akurat, silakan hubungi <a href="${waLink}" target="_blank" class="text-blue-600 underline">WhatsApp CS</a> atau datang langsung ke Puskesmas Kebandaran untuk diperiksa langsung oleh dokter kami.</div>`;
+            }
+
+            chatLogs.push({ sender: 'bot', text: reply });
+            renderChat();
+        }
+
+        // 1. Kalkulator Gizi Anak (0 - 5 Tahun)
+        function handleCekGiziAnak(e) {
+            e.preventDefault();
+            const usia = parseInt(document.getElementById('anak-usia').value);
+            const bb = parseFloat(document.getElementById('anak-bb').value);
+            const tb = parseFloat(document.getElementById('anak-tb').value);
+            const res = document.getElementById('gizi-anak-result');
+            res.classList.remove('hidden');
+
+            // Estimasi sederhana indeks antropometri berat badan terhadap tinggi badan (BB/TB) anak balita
+            // Batas rata-rata sederhana untuk simulasi klinis cepat
+            let statusGizi = "Normal";
+            let color = "bg-emerald-50 text-emerald-900 border-emerald-200";
+            let saran = "";
+
+            // Estimasi rasio berat per tinggi badan kasar untuk anak
+            const rasio = bb / (tb / 100); 
+
+            if (rasio < 10) {
+                statusGizi = "Kurus (Gizi Kurang / Risiko Wasting)";
+                color = "bg-amber-50 text-amber-900 border-amber-200";
+                saran = "• Berikan makanan tinggi kalori dan protein hewani (seperti telur, ikan, atau ayam secara rutin).<br>" +
+                        "• Tingkatkan frekuensi pemberian makan (porsi kecil tapi sering).<br>" +
+                        "• Konsultasikan ke Posyandu atau Puskesmas terdekat untuk memantau grafik KMS secara berkala.";
+            } else if (rasio > 19) {
+                statusGizi = "Obesitas (Gizi Lebih)";
+                color = "bg-red-50 text-red-900 border-red-200";
+                saran = "• Batasi konsumsi makanan/minuman manis, makanan instan, dan jajanan tinggi gula/minyak.<br>" +
+                        "• Perbanyak aktivitas fisik / stimulasi gerak aktif bermain anak.<br>" +
+                        "• Perbanyak asupan sayur dan buah segar dalam menu harian.";
+            } else {
+                statusGizi = "Normal (Gizi Seimbang)";
+                color = "bg-emerald-50 text-emerald-900 border-emerald-200";
+                saran = "• Pertahankan pola pemberian makan bergizi seimbang (karbohidrat, protein hewani/nabati, sayur, buah).<br>" +
+                        "• Pastikan anak rutin mendatangi Posyandu setiap bulan untuk penimbangan berat badan.<br>" +
+                        "• Jaga kebersihan makanan dan lingkungan bermain anak.";
+            }
+
+            res.innerHTML = `<div class="p-3.5 rounded-xl border ${color} text-xs space-y-2">
+                <p class="font-bold text-sm">Hasil Pengecekan Gizi Anak (Usia ${usia} Bulan):</p>
+                <p>Status: <span class="font-bold underline">${statusGizi}</span></p>
+                <div class="pt-1 border-t border-gray-200/60">
+                    <p class="font-semibold mb-1">Saran & Gizi Seimbang:</p>
+                    <p class="leading-relaxed">${saran}</p>
+                </div>
+            </div>`;
+        }
+
+        // 2. Kalkulator IMT Dewasa
+        function handleCekIMTDewasa(e) {
+            e.preventDefault();
+            const bb = parseFloat(document.getElementById('dewasa-bb').value);
+            const tb = parseFloat(document.getElementById('dewasa-tb').value) / 100; // ubah ke meter
+            const res = document.getElementById('imt-dewasa-result');
+            res.classList.remove('hidden');
+
+            const imt = bb / (tb * tb);
+            let status = "Normal (Ideal)";
+            let color = "bg-emerald-50 text-emerald-900 border-emerald-200";
+            let saran = "";
+
+            if (imt < 18.5) {
+                status = "Kurus (Berat Badan Kurang)";
+                color = "bg-amber-50 text-amber-900 border-amber-200";
+                saran = "• Tingkatkan asupan makanan bergizi tinggi kalori dan protein berkualitas.<br>" +
+                        "• Makan dengan porsi lebih sering dan teratur.<br>" +
+                        "• Lakukan olahraga ringan untuk membangun massa otot.";
+            } else if (imt >= 25 && imt < 30) {
+                status = "Gemuk (Berat Badan Berlebih / Overweight)";
+                color = "bg-orange-50 text-orange-900 border-orange-200";
+                saran = "• Kurangi konsumsi makanan berlemak jenuh, gorengan, dan gula berlebih.<br>" +
+                        "• Tingkatkan aktivitas fisik atau berolahraga minimal 30 menit sehari.<br>" +
+                        "• Perbanyak konsumsi serat (sayur, buah, dan biji-bijian).";
+            } else if (imt >= 30) {
+                status = "Obesitas";
+                color = "bg-red-50 text-red-900 border-red-200";
+                saran = "• Batasi porsi karbohidrat sederhana dan hindari minuman manis berpemanis buatan.<br>" +
+                        "• Konsultasikan dengan ahli gizi atau dokter Puskesmas untuk program penurunan berat badan aman.<br>" +
+                        "• Rutin pantau tekanan darah dan kadar gula darah.";
+            } else {
+                status = "Normal (Ideal)";
+                color = "bg-emerald-50 text-emerald-900 border-emerald-200";
+                saran = "• Pertahankan pola makan sehat gizi seimbang.<br>" +
+                        "• Lakukan olahraga teratur 3-5 kali seminggu.<br>" +
+                        "• Cukupi kebutuhan cairan tubuh dengan minum air putih 8 gelas sehari.";
+            }
+
+            res.innerHTML = `<div class="p-3.5 rounded-xl border ${color} text-xs space-y-2">
+                <p class="font-bold text-sm">Hasil IMT Dewasa: <span class="underline">${status}</span></p>
+                <p>Nilai IMT Anda: <b>${imt.toFixed(1)}</b></p>
+                <div class="pt-1 border-t border-gray-200/60">
+                    <p class="font-semibold mb-1">Saran Kesehatan & Gizi:</p>
+                    <p class="leading-relaxed">${saran}</p>
+                </div>
+            </div>`;
+        }
+
+        // Kalkulator Tensi
+        function handleCekTensi(e) {
+            e.preventDefault();
+            const sis = parseInt(document.getElementById('tensi-sistolik').value);
+            const dias = parseInt(document.getElementById('tensi-diastolik').value);
+            const res = document.getElementById('tensi-result');
+            res.classList.remove('hidden');
+            let cat = "Normal", color = "bg-emerald-50 text-emerald-800 border-emerald-200";
+            if(sis >= 140 || dias >= 90) {
+                cat = "Hipertensi (Tekanan Darah Tinggi)";
+                color = "bg-red-50 text-red-800 border-red-200";
+            } else if(sis >= 120 || dias >= 80) {
+                cat = "Pra-Hipertensi / Normal Tinggi";
+                color = "bg-amber-50 text-amber-800 border-amber-200";
+            }
+            res.innerHTML = `<div class="p-3.5 rounded-xl border ${color} text-xs font-medium space-y-1">
+                <p class="font-bold">Hasil Analisis: ${cat}</p>
+                <p>Tekanan Darah: ${sis}/${dias} mmHg</p>
+            </div>`;
+        }
+
+        // Kalkulator HPL
+        function handleCekHPL(e) {
+            e.preventDefault();
+            const hphtVal = document.getElementById('hpl-hpht').value;
+            if(!hphtVal) return;
+            const hphtDate = new Date(hphtVal);
+            const hplDate = new Date(hphtDate.getTime() + (280 * 24 * 60 * 60 * 1000));
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const res = document.getElementById('hpl-result');
+            res.classList.remove('hidden');
+            res.innerHTML = `<div class="p-3.5 rounded-xl border bg-pink-50 text-pink-900 border-pink-200 text-xs font-medium space-y-1">
+                <p class="font-bold">Estimasi Hari Perkiraan Lahir (HPL):</p>
+                <p class="text-sm font-bold">${hplDate.toLocaleDateString('id-ID', options)}</p>
+            </div>`;
+        }
+
+        // Simpan Pengaturan
+        function saveSettings() {
+            const jadwal = document.getElementById('setting-jadwal-input').value;
+            const ugd = document.getElementById('setting-ugd-input').value;
+            const cs = document.getElementById('setting-cs-input').value;
+
+            dynamicCSPhone = cs;
+
+            // Update UI Beranda
+            document.getElementById('display-jadwal-rawat-jalan').textContent = jadwal;
+            document.querySelectorAll('.ugd-phone-display').forEach(el => el.textContent = ugd);
+            document.querySelectorAll('.cs-phone-display').forEach(el => el.textContent = cs);
+            
+            const ugdLink = document.getElementById('link-ugd-phone');
+            if(ugdLink) ugdLink.href = `tel:${ugd.replace(/[^0-9]/g, '')}`;
+
+            const csLink = document.getElementById('link-cs-wa');
+            if(csLink) csLink.href = `https://wa.me/${cs}`;
+
+            showToast('Pengaturan jam buka dan kontak berhasil diperbarui!', 'success');
+            switchTab('home');
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            initChat();
+        };
+    </script>
+</body>
+</html>
